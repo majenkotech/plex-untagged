@@ -25,3 +25,11 @@ OS X, etc.  Just check the first couple of lines.
 
 On Linux (and possibly other systmes too) you need to either run it as root (sudo)
 or as the plex user in order to get write access to the database.
+
+Linux Prerequisutes
+-------------------
+
+Required PERL libraries:
+
+    apt-get install libdbi-perl
+    apt-get install libdbd-sqlite3-perl
