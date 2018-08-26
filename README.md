@@ -4,9 +4,6 @@ Plex Untagged
 This is a small PERL script to add the label "Untagged" to any Plex Media
 Server library items that currently have no labels assigned.
 
-* Note: This only works for films at the moment. TV Programmes fail for some
-reason.
-
 There is currently no way to display only items that have no labels assigned
 to them in Plex, so this will add a label to them for you to allow you to
 find them.
