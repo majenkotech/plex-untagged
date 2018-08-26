@@ -1,0 +1,95 @@
+#!/usr/bin/perl
+
+use strict;
+
+use Data::Dumper;
+use DBI;
+use POSIX qw(strftime);
+
+####
+#
+# Point this to your real library database location
+
+my $dbpath = "/var/lib/plexmediaserver/Library/Application Support/Plex Media Server/Plug-in Support/Databases/com.plexapp.plugins.library.db";
+
+
+
+
+
+
+my $lib = shift or die "You must specify a library section to tag!";
+
+my $dbh = DBI->connect("DBI:SQLite:$dbpath", "", "", { RaiseError => 1 }) or die $DBI::errstr;
+
+my $tag_id = getTagID("Untagged");
+die "Cannit find tag 'Untagged'" if $tag_id == -1;
+
+my $lib_id = getLibraryID($lib);
+die "Cannot find library '$lib'" if $lib_id == -1;
+
+print "Tag ID:     $tag_id\n";
+print "Library ID: $lib_id\n";
+
+my $q1 = $dbh->prepare(qq(select media_items.id,metadata_items.id,title from media_items,metadata_items where media_items.library_section_id = ? and metadata_items.id = media_items.metadata_item_id;));
+$q1->bind_param(1, $lib_id);
+$q1->execute();
+
+while (my @r1 = $q1->fetchrow_array()) {
+    my $media_id = $r1[0];
+    my $meta_id = $r1[1];
+    my $title = $r1[2];
+
+
+    my $q2 = $dbh->prepare("select tags.tag from tags,taggings where tags.id = taggings.tag_id and tags.tag_type = 11 and taggings.metadata_item_id = ?");
+    $q2->bind_param(1, $meta_id);
+    $q2->execute();
+
+    my $tags = 0;
+    while (my @r2 = $q2->fetchrow_array()) {
+        my $tag = $r2[0];
+        $tags++;
+    }
+
+    if ($tags == 0) {
+
+        my $now = strftime '%Y-%m-%d %H:%M:%S', gmtime();
+
+        $q2 = $dbh->prepare("insert into taggings (metadata_item_id, tag_id, created_at) values (?, ?, ?);");
+        $q2->bind_param(1, $meta_id);
+        $q2->bind_param(2, $tag_id);
+        $q2->bind_param(3, $now);
+        $q2->execute();
+        printf("Tagged %s\n", $title);
+
+    }
+
+
+}
+
+
+sub getLibraryID($) {
+    my $lib = shift;
+
+    my $sth = $dbh->prepare("select id from library_sections where name = ?");
+    $sth->bind_param(1, $lib);
+    $sth->execute();
+
+    if (my @r = $sth->fetchrow_array()) {
+        return $r[0];
+    }
+    return -1;
+}
+
+
+sub getTagID($) {
+    my $tag = shift;
+
+    my $sth = $dbh->prepare("select id from tags where tag=? and tag_type=11");
+    $sth->bind_param(1, $tag);
+    $sth->execute();
+
+    if (my @r = $sth->fetchrow_array()) {
+        return $r[0];
+    }
+    return -1;
+}
